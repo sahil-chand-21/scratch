@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import LanguageToggle from './LanguageToggle'
 import { FiMenu, FiX, FiUser, FiLogOut, FiEdit, FiHome } from 'react-icons/fi'
+import logo from '../assets/logo.png'
 
 export default function Navbar({ variant = 'landing' }) {
     const { t } = useTranslation()
@@ -42,16 +43,14 @@ export default function Navbar({ variant = 'landing' }) {
 
     return (
         <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>
-            <Link to="/" className="navbar-brand">
-                <svg width="42" height="42" viewBox="0 0 42 42" fill="none">
-                    <circle cx="21" cy="21" r="20" fill="#821D30" stroke="#E8863A" strokeWidth="2" />
-                    <path d="M21 8L28 18H14L21 8Z" fill="#E8863A" />
-                    <path d="M14 18L21 28L28 18H14Z" fill="#FDFCF7" />
-                    <path d="M17 22L21 28L25 22" stroke="#821D30" strokeWidth="1.5" />
-                    <circle cx="21" cy="32" r="2" fill="#5B9A59" />
-                </svg>
-                <span>E-TaxPay</span>
-            </Link>
+           <Link to="/" className="navbar-brand">
+    <img 
+        src={logo} 
+        alt="E-TaxPay Logo" 
+        style={{ width: '42px', height: '42px', objectFit: 'contain' }}
+    />
+    <span>E-TaxPay</span>
+</Link>
 
             {variant === 'landing' && (
                 <div className="navbar-links">

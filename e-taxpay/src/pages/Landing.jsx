@@ -11,6 +11,16 @@ import {
     FiCamera, FiGithub, FiLinkedin, FiInstagram
 } from 'react-icons/fi'
 
+import sumitImg from '../assets/sumit.jpeg'
+import rajaImg from '../assets/raja.jpeg'
+import manishImg from '../assets/manish.jpeg'
+import bhaveshImg from '../assets/bhavesh.jpeg'
+import deepakImg from '../assets/deepak.jpeg'
+import sahilImg from '../assets/sahil.jpeg'
+import lalitImg from '../assets/lalit.jpeg'
+import gauravImg from '../assets/gaurav.jpeg'
+
+
 const aboutFeatures = [
     { key: 'transparency', icon: FiShield, color: 'maroon' },
     { key: 'easyPayment', icon: FiCreditCard, color: 'saffron' },
@@ -21,14 +31,14 @@ const aboutFeatures = [
 ]
 
 const teamMembers = [
-    { name: 'Manish Pandey', role: 'Project Lead', initials: 'MP', tech: 'React, Supabase' },
-    { name: 'Priya Sharma', role: 'Frontend Developer', initials: 'PS', tech: 'React, CSS' },
-    { name: 'Amit Rawat', role: 'Backend Developer', initials: 'AR', tech: 'Node.js, PostgreSQL' },
-    { name: 'Kavita Bisht', role: 'UI/UX Designer', initials: 'KB', tech: 'Figma, CSS' },
-    { name: 'Rohit Joshi', role: 'Database Architect', initials: 'RJ', tech: 'Supabase, SQL' },
-    { name: 'Sneha Negi', role: 'Testing Lead', initials: 'SN', tech: 'Jest, Cypress' },
-    { name: 'Vikram Singh', role: 'DevOps Engineer', initials: 'VS', tech: 'Docker, CI/CD' },
-    { name: 'Anita Pant', role: 'Documentation', initials: 'AP', tech: 'Technical Writing' },
+    { name: 'Sumit Bhandari', role: 'Project Lead',  tech: 'React, Supabase' , img:sumitImg},
+    { name: 'Raja Rautela', role: 'Frontend Developer', tech: 'React, CSS' ,img:rajaImg },
+    { name: 'Manish Paliwal', role: 'Backend Developer', tech: 'Node.js, PostgreSQL',img:manishImg },
+    { name: 'Bhavesh Bisht', role: 'UI/UX Designer', tech: 'Figma, CSS' ,img:bhaveshImg },
+    { name: 'Deepak Bisht', role: 'Database Architect', tech: 'Supabase, SQL' ,img:deepakImg },
+    { name: 'Sahil Chand', role: 'Testing Lead',tech: 'Jest, Cypress' ,img:sahilImg },
+    { name: 'Lalit Singh', role: 'DevOps Engineer', tech: 'Docker, CI/CD' ,img:lalitImg },
+    { name: 'Gaurav Bisht', role: 'Documentation', tech: 'Technical Writing' ,img:gauravImg },
 ]
 
 const complaintReasons = [
@@ -272,7 +282,7 @@ export default function Landing() {
                                 className={`team-card animate-in delay-${(i % 4) + 1}`}
                                 onClick={() => setSelectedMember(selectedMember === i ? null : i)}
                             >
-                                <div className="avatar">{m.initials}</div>
+                                <img src={m.img} alt={m.name} className="team-photo" />
                                 <h4>{m.name}</h4>
                                 <p className="role">{m.role}</p>
                                 {selectedMember === i && (
