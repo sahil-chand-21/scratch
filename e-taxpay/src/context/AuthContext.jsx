@@ -1,33 +1,9 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import api from '../lib/api'
 
 const AuthContext = createContext(null)
 
-// Mock user data for demo
-const MOCK_USERS = {
-    'user': {
-        id: '1',
-        username: 'Rajesh Kumar',
-        gstId: '05AAAPZ2694Q1ZN',
-        role: 'user',
-        mobile: '9876543210',
-        district: 'almora',
-        block: 'almora_block',
-        businessType: 'general',
-        fatherName: 'Shri Ram Kumar',
-        email: 'rajesh@example.com',
-        avatar: null,
-        createdAt: '2025-06-15'
-    },
-    'admin': {
-        id: '100',
-        username: 'Admin Officer',
-        role: 'super_admin',
-        district: 'almora',
-        email: 'admin@etaxpay.uk.gov.in',
-        avatar: null,
-        createdAt: '2025-01-01'
-    }
-}
+// Removed hardcoded mock users as they are now handled by the backend
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
@@ -52,38 +28,36 @@ export function AuthProvider({ children }) {
             throw new Error('Account locked due to too many failed attempts.')
         }
 
-        // Simulate authentication
-        await new Promise(r => setTimeout(r, 800))
+        try {
+            const endpoint = type === 'user' ? '/auth/login/user' : '/auth/login/admin';
+            
+            // Add isDemo flag for testing against the backend's dummy login
+            const authPayload = { ...credentials, isDemo: true };
 
-        if (type === 'user') {
-            if (credentials.gstId && credentials.password === 'demo123') {
-                const userData = { ...MOCK_USERS.user, gstId: credentials.gstId }
-                setUser(userData)
-                localStorage.setItem('etaxpay-user', JSON.stringify(userData))
-                setLoginAttempts(0)
-                return userData
-            }
-        } else {
-            if (credentials.username && credentials.password === 'admin123' && credentials.passkey === 'ADMIN2026') {
-                const userData = { ...MOCK_USERS.admin, username: credentials.username }
-                setUser(userData)
-                localStorage.setItem('etaxpay-user', JSON.stringify(userData))
-                setLoginAttempts(0)
-                return userData
-            }
-        }
+            const response = await api.post(endpoint, authPayload);
 
-        const attempts = loginAttempts + 1
-        setLoginAttempts(attempts)
-        if (attempts >= 5) {
-            setIsLocked(true)
-            setTimeout(() => {
-                setIsLocked(false)
-                setLoginAttempts(0)
-            }, 30 * 60 * 1000)
-            throw new Error('locked')
+            if (response.data.success && response.data.user) {
+                const userData = response.data.user;
+                setUser(userData);
+                localStorage.setItem('etaxpay-user', JSON.stringify(userData));
+                setLoginAttempts(0);
+                return userData;
+            } else {
+                throw new Error('invalid');
+            }
+        } catch(error) {
+            const attempts = loginAttempts + 1
+            setLoginAttempts(attempts)
+            if (attempts >= 5) {
+                setIsLocked(true)
+                setTimeout(() => {
+                    setIsLocked(false)
+                    setLoginAttempts(0)
+                }, 30 * 60 * 1000)
+                throw new Error('locked')
+            }
+            throw new Error('invalid')
         }
-        throw new Error('invalid')
     }
 
     const register = async (userData) => {
