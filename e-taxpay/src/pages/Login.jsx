@@ -138,7 +138,7 @@ export default function Login() {
 
                     {tab === 'user' && (
                         <div className="alert alert-info" style={{ marginTop: 16, fontSize: '0.8rem' }}>
-                            💡 Demo: Use any GST ID with password <strong>demo123</strong>
+                            💡 Demo:gst id - 21SSSSS1111S1ZS  <strong>test123</strong>
                         </div>
                     )}
                     {tab === 'admin' && (

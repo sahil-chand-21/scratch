@@ -61,8 +61,11 @@ export function AuthProvider({ children }) {
     }
 
     const register = async (userData) => {
-        await new Promise(r => setTimeout(r, 1000))
-        return { success: true, message: 'Registration successful!' }
+        const response = await api.post('/auth/register', userData);
+        if (!response.data.success) {
+            throw new Error(response.data.error || 'Registration failed');
+        }
+        return response.data;
     }
 
     const logout = () => {

@@ -7,15 +7,6 @@ import {
 } from 'recharts'
 import api from '../../lib/api'
 
-const blockData = [
-    { name: 'Almora', paid: 45000, unpaid: 12000 },
-    { name: 'Hawalbagh', paid: 32000, unpaid: 8000 },
-    { name: 'Salt', paid: 28000, unpaid: 15000 },
-    { name: 'Dwarahat', paid: 22000, unpaid: 6000 },
-    { name: 'Bhaisiyachana', paid: 18000, unpaid: 9000 },
-    { name: 'Lamgara', paid: 15000, unpaid: 5000 },
-]
-
 const shopTypeData = [
     { name: 'General Store', value: 35, color: '#E8863A' },
     { name: 'Medical', value: 20, color: '#5B9A59' },
@@ -23,15 +14,6 @@ const shopTypeData = [
     { name: 'Electronics', value: 12, color: '#4285F4' },
     { name: 'Restaurant', value: 10, color: '#D4712A' },
     { name: 'Other', value: 8, color: '#8A8A8A' },
-]
-
-const monthlyData = [
-    { month: 'Sep', amount: 120000 },
-    { month: 'Oct', amount: 135000 },
-    { month: 'Nov', amount: 128000 },
-    { month: 'Dec', amount: 142000 },
-    { month: 'Jan', amount: 155000 },
-    { month: 'Feb', amount: 98000 },
 ]
 
 const recentPayments = [
@@ -123,7 +105,7 @@ export default function Dashboard() {
                 <div className="chart-card">
                     <h4>{t('admin.blockWise')}</h4>
                     <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={blockData}>
+                        <BarChart data={metrics.blockData || []}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#E5E0D5" />
                             <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                             <YAxis tick={{ fontSize: 11 }} />
@@ -166,12 +148,12 @@ export default function Dashboard() {
                 <div className="chart-card">
                     <h4>{t('admin.monthlyGrowth')}</h4>
                     <ResponsiveContainer width="100%" height={260}>
-                        <LineChart data={monthlyData}>
+                        <LineChart data={metrics.collectionTrends || []}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#E5E0D5" />
-                            <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                             <YAxis tick={{ fontSize: 11 }} />
                             <Tooltip formatter={(value) => [`₹${value.toLocaleString()}`, 'Collection']} />
-                            <Line type="monotone" dataKey="amount" stroke="#821D30" strokeWidth={3} dot={{ fill: '#821D30', r: 5 }} />
+                            <Line type="monotone" dataKey="collection" stroke="#821D30" strokeWidth={3} dot={{ fill: '#821D30', r: 5 }} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>

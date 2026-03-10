@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import taxpayerRoutes from './routes/taxpayerRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import taxesRoutes from './routes/taxesRoutes.js';
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/taxes', taxesRoutes);
 app.use('/api/taxpayers', taxpayerRoutes);
 app.use('/api/admin', adminRoutes);
 
