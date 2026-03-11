@@ -1,39 +1,46 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FiSearch, FiDownload, FiEye } from 'react-icons/fi'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
-
-const allUsers = [
-    { id: 1, name: 'Rajesh Kumar', gst: '05AAAPZ2694Q1ZN', block: 'Almora', type: 'General Store', mobile: '9876543210', status: 'paid', month: 'Feb', year: 2026, date: '25 Feb 2026', time: '14:30' },
-    { id: 2, name: 'Priya Devi', gst: '05BBBPZ3584Q2YM', block: 'Hawalbagh', type: 'Medical', mobile: '9876543211', status: 'paid', month: 'Feb', year: 2026, date: '26 Feb 2026', time: '10:15' },
-    { id: 3, name: 'Mohan Lal', gst: '05CCCPZ4474Q3XN', block: 'Salt', type: 'Clothing', mobile: '9876543212', status: 'unpaid', month: 'Feb', year: 2026, date: '-', time: '-' },
-    { id: 4, name: 'Kamla Bisht', gst: '05DDDPZ5364Q4WO', block: 'Dwarahat', type: 'Electronics', mobile: '9876543213', status: 'paid', month: 'Jan', year: 2026, date: '20 Jan 2026', time: '16:45' },
-    { id: 5, name: 'Suresh Rawat', gst: '05EEEPZ6254Q5VP', block: 'Almora', type: 'Restaurant', mobile: '9876543214', status: 'unpaid', month: 'Feb', year: 2026, date: '-', time: '-' },
-    { id: 6, name: 'Anita Pant', gst: '05FFFPZ7144Q6UQ', block: 'Lamgara', type: 'General Store', mobile: '9876543215', status: 'paid', month: 'Feb', year: 2026, date: '22 Feb 2026', time: '09:30' },
-    { id: 7, name: 'Dinesh Joshi', gst: '05GGGPZ8034Q7TR', block: 'Bhaisiyachana', type: 'Hardware', mobile: '9876543216', status: 'unpaid', month: 'Jan', year: 2026, date: '-', time: '-' },
-    { id: 8, name: 'Geeta Sharma', gst: '05HHHPZ9924Q8SS', block: 'Hawalbagh', type: 'Stationery', mobile: '9876543217', status: 'paid', month: 'Feb', year: 2026, date: '24 Feb 2026', time: '11:00' },
-    { id: 9, name: 'Harish Pandey', gst: '05IIIPZ0814Q9RT', block: 'Salt', type: 'General Store', mobile: '9876543218', status: 'paid', month: 'Feb', year: 2026, date: '23 Feb 2026', time: '13:20' },
-    { id: 10, name: 'Kiran Negi', gst: '05JJJPZ1704Q0QU', block: 'Almora', type: 'Medical', mobile: '9876543219', status: 'unpaid', month: 'Feb', year: 2026, date: '-', time: '-' },
-]
+import api from '../../lib/api'
 
 export default function AllUsers() {
     const { t } = useTranslation()
+    const [allUsers, setAllUsers] = useState([])
+    const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [blockFilter, setBlockFilter] = useState('')
     const [statusFilter, setStatusFilter] = useState('')
     const [typeFilter, setTypeFilter] = useState('')
 
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const response = await api.get('/admin/users');
+                if (response.data.success) {
+                    setAllUsers(response.data.users || []);
+                }
+            } catch (error) {
+                console.error("Failed to fetch users:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUsers();
+    }, []);
+
     const filtered = allUsers.filter(u => {
-        if (search && !u.name.toLowerCase().includes(search.toLowerCase()) && !u.gst.toLowerCase().includes(search.toLowerCase())) return false
+        if (search && !(u.username || u.name)?.toLowerCase().includes(search.toLowerCase()) && !(u.gst_id || u.gst)?.toLowerCase().includes(search.toLowerCase())) return false
         if (blockFilter && u.block !== blockFilter) return false
-        if (statusFilter && u.status !== statusFilter) return false
-        if (typeFilter && u.type !== typeFilter) return false
+        if (statusFilter && (u.status || 'unpaid') !== statusFilter) return false
+        if (typeFilter && (u.business_type || u.type) !== typeFilter) return false
         return true
     })
 
-    const blocks = [...new Set(allUsers.map(u => u.block))]
-    const types = [...new Set(allUsers.map(u => u.type))]
+    const blocks = [...new Set(allUsers.map(u => u.block).filter(Boolean))]
+    const types = [...new Set(allUsers.map(u => u.business_type || u.type).filter(Boolean))]
 
     const exportPDF = () => {
         const doc = new jsPDF('landscape')
@@ -42,7 +49,7 @@ export default function AllUsers() {
         doc.autoTable({
             startY: 22,
             head: [['S.No', 'Name', 'GST ID', 'Block', 'Type', 'Month', 'Year', 'Status', 'Date', 'Time']],
-            body: filtered.map((u, i) => [i + 1, u.name, u.gst, u.block, u.type, u.month, u.year, u.status.toUpperCase(), u.date, u.time]),
+            body: filtered.map((u, i) => [i + 1, u.username || u.name, u.gst_id || u.gst, u.block, u.business_type || u.type, u.month, u.year, (u.status || 'UNPAID').toUpperCase(), u.date, u.time]),
             theme: 'grid',
             headStyles: { fillColor: [130, 29, 48] },
             styles: { fontSize: 7 }
@@ -107,35 +114,48 @@ export default function AllUsers() {
                         </tr>
                     </thead>
                     <tbody>
-                        {filtered.map((u, i) => (
-                            <tr key={u.id}>
-                                <td>{i + 1}</td>
-                                <td>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div className="profile-avatar" style={{ width: 32, height: 32, fontSize: '0.75rem' }}>
-                                            {u.name.split(' ').map(n => n[0]).join('')}
-                                        </div>
-                                        <strong>{u.name}</strong>
-                                    </div>
-                                </td>
-                                <td style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{u.gst}</td>
-                                <td>{u.block}</td>
-                                <td><span className="badge badge-info">{u.type}</span></td>
-                                <td>{u.month} {u.year}</td>
-                                <td>
-                                    <span className={`badge badge-${u.status === 'paid' ? 'paid' : 'danger'}`}>
-                                        {u.status === 'paid' ? '✓' : '✗'} {t(`user.${u.status}`)}
-                                    </span>
-                                </td>
-                                <td>{u.date}</td>
-                                <td>{u.time}</td>
-                                <td>
-                                    <button className="btn btn-secondary btn-sm">
-                                        <FiEye size={14} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                        {loading ? (
+                            <tr><td colSpan="10" style={{ textAlign: 'center', padding: '2rem' }}>Loading users...</td></tr>
+                        ) : filtered.length === 0 ? (
+                            <tr><td colSpan="10" style={{ textAlign: 'center', padding: '2rem' }}>No users found</td></tr>
+                        ) : (
+                            filtered.map((u, i) => {
+                                const displayName = u.username || u.name || 'Unknown User'
+                                const gstStr = u.gst_id || u.gst || 'N/A'
+                                const typeStr = u.business_type || u.type || 'N/A'
+                                const statusStr = u.status || 'unpaid'
+                                
+                                return (
+                                    <tr key={u.id || i}>
+                                        <td>{i + 1}</td>
+                                        <td>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                <div className="profile-avatar" style={{ width: 32, height: 32, fontSize: '0.75rem' }}>
+                                                    {displayName.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                                </div>
+                                                <strong>{displayName}</strong>
+                                            </div>
+                                        </td>
+                                        <td style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{gstStr}</td>
+                                        <td>{u.block || 'N/A'}</td>
+                                        <td><span className="badge badge-info">{typeStr}</span></td>
+                                        <td>{u.month || '-'} {u.year || ''}</td>
+                                        <td>
+                                            <span className={`badge badge-${statusStr === 'paid' ? 'paid' : 'danger'}`}>
+                                                {statusStr === 'paid' ? '✓' : '✗'} {statusStr === 'paid' ? t('user.paid') : t('user.unpaid')}
+                                            </span>
+                                        </td>
+                                        <td>{u.date || '-'}</td>
+                                        <td>{u.time || '-'}</td>
+                                        <td>
+                                            <button className="btn btn-secondary btn-sm">
+                                                <FiEye size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                )
+                            })
+                        )}
                     </tbody>
                 </table>
             </div>

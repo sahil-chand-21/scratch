@@ -1,9 +1,11 @@
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FiUsers, FiCheckCircle, FiXCircle, FiDollarSign } from 'react-icons/fi'
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, LineChart, Line, Legend
 } from 'recharts'
+import api from '../../lib/api'
 
 const blockData = [
     { name: 'Almora', paid: 45000, unpaid: 12000 },
@@ -42,6 +44,32 @@ const recentPayments = [
 
 export default function Dashboard() {
     const { t } = useTranslation()
+    const [loading, setLoading] = useState(true)
+    const [metrics, setMetrics] = useState({
+        totalUsers: 0,
+        totalTaxesCollected: 0,
+        activeSessions: 0
+    })
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                // Fetch high-level metrics from the API
+                const response = await api.get('/admin/metrics');
+                if (response.data.success) {
+                    setMetrics(response.data.metrics);
+                }
+            } catch (error) {
+                console.error("Failed to fetch dashboard metrics");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+    }, []);
+
+    if (loading) return <div style={{ padding: '2rem' }}>Loading dashboard data...</div>;
 
     return (
         <div>
@@ -57,7 +85,7 @@ export default function Dashboard() {
                         <FiUsers size={22} />
                     </div>
                     <div className="stat-info">
-                        <h3>1,247</h3>
+                        <h3>{metrics.totalUsers}</h3>
                         <p>{t('admin.totalShops')}</p>
                     </div>
                 </div>
@@ -84,7 +112,7 @@ export default function Dashboard() {
                         <FiDollarSign size={22} />
                     </div>
                     <div className="stat-info">
-                        <h3>₹7,78,000</h3>
+                        <h3>₹{metrics.totalTaxesCollected.toLocaleString()}</h3>
                         <p>{t('admin.totalCollected')}</p>
                     </div>
                 </div>
