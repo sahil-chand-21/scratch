@@ -17,7 +17,7 @@ export default function Login() {
     const [loading, setLoading] = useState(false)
 
     const [userForm, setUserForm] = useState({ gstId: '', password: '' })
-    const [adminForm, setAdminForm] = useState({ username: '', password: '', passkey: '' })
+    const [adminForm, setAdminForm] = useState({ email: '', password: '', passkey: '' })
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -31,7 +31,7 @@ export default function Login() {
                 navigate('/user')
             } else {
                 await login({
-                    username: adminForm.username,
+                    email: adminForm.email,
                     password: adminForm.password,
                     passkey: adminForm.passkey
                 }, 'admin')
@@ -97,10 +97,11 @@ export default function Login() {
                         ) : (
                             <>
                                 <div className="form-group">
-                                    <label>{t('auth.username')}</label>
-                                    <input type="text" className="form-control" required
-                                        value={adminForm.username}
-                                        onChange={e => setAdminForm({ ...adminForm, username: e.target.value })} />
+                                    <label>{t('auth.email') || 'Email'}</label>
+                                    <input type="email" className="form-control" required
+                                        placeholder="admin@etaxpay.gov.in"
+                                        value={adminForm.email}
+                                        onChange={e => setAdminForm({ ...adminForm, email: e.target.value })} />
                                 </div>
                                 <div className="form-group">
                                     <label>{t('auth.password')}</label>
@@ -136,16 +137,6 @@ export default function Login() {
                         {t('auth.noAccount')} <Link to="/register">{t('auth.registerHere')}</Link>
                     </div>
 
-                    {tab === 'user' && (
-                        <div className="alert alert-info" style={{ marginTop: 16, fontSize: '0.8rem' }}>
-                            💡 Demo:gst id - 21SSSSS1111S1ZS  <strong>test123</strong>
-                        </div>
-                    )}
-                    {tab === 'admin' && (
-                        <div className="alert alert-info" style={{ marginTop: 16, fontSize: '0.8rem' }}>
-                            💡 Demo: Any username, password <strong>admin123</strong>, passkey <strong>ADMIN2026</strong>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

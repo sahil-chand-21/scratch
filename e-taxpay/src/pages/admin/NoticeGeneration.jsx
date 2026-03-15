@@ -1,29 +1,47 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FiSend, FiCheckCircle } from 'react-icons/fi'
-
-const users = [
-    { name: 'Rajesh Kumar', gst: '05AAAPZ2694Q1ZN' },
-    { name: 'Priya Devi', gst: '05BBBPZ3584Q2YM' },
-    { name: 'Mohan Lal', gst: '05CCCPZ4474Q3XN' },
-    { name: 'Kamla Bisht', gst: '05DDDPZ5364Q4WO' },
-    { name: 'Suresh Rawat', gst: '05EEEPZ6254Q5VP' },
-]
+import api from '../../lib/api'
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 export default function NoticeGeneration() {
     const { t } = useTranslation()
+    const [users, setUsers] = useState([])
+    const [loading, setLoading] = useState(true)
     const [selectedUser, setSelectedUser] = useState('')
     const [month, setMonth] = useState('')
     const [year, setYear] = useState('2026')
     const [preview, setPreview] = useState(null)
     const [sent, setSent] = useState(false)
+    const [sending, setSending] = useState(false)
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const response = await api.get('/admin/users')
+                if (response.data.success) {
+                    setUsers(response.data.users.map(u => ({
+                        id: u.id,
+                        name: u.username,
+                        gst: u.gst_id
+                    })))
+                }
+            } catch (error) {
+                console.error('Failed to fetch users')
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchUsers()
+    }, [])
 
     const generateNotice = () => {
         if (!selectedUser || !month || !year) return
-        const user = users.find(u => u.gst === selectedUser)
+        const user = users.find(u => u.id === selectedUser)
+        if (!user) return
         setPreview({
+            userId: user.id,
             user: user.name,
             gst: user.gst,
             month,
@@ -33,10 +51,31 @@ export default function NoticeGeneration() {
         setSent(false)
     }
 
-    const sendNotice = () => {
-        setSent(true)
-        setTimeout(() => setSent(false), 3000)
+    const sendNotice = async () => {
+        if (!preview) return
+        setSending(true)
+        try {
+            const monthIndex = months.indexOf(preview.month) + 1
+            const response = await api.post('/admin/notices', {
+                user_id: preview.userId,
+                title: `Tax Payment Notice - ${preview.month} ${preview.year}`,
+                message: preview.text,
+                notice_month: monthIndex,
+                notice_year: parseInt(preview.year),
+                is_urgent: false
+            })
+            if (response.data.success) {
+                setSent(true)
+                setTimeout(() => setSent(false), 3000)
+            }
+        } catch (error) {
+            console.error('Failed to send notice')
+        } finally {
+            setSending(false)
+        }
     }
+
+    if (loading) return <div style={{ padding: '2rem' }}>Loading users...</div>
 
     return (
         <div>
@@ -53,7 +92,7 @@ export default function NoticeGeneration() {
                         <label>{t('admin.selectUser')}</label>
                         <select className="form-control" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
                             <option value="">-- Select User --</option>
-                            {users.map(u => <option key={u.gst} value={u.gst}>{u.name} ({u.gst})</option>)}
+                            {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.gst})</option>)}
                         </select>
                     </div>
                     <div className="auth-form-row">
@@ -97,8 +136,9 @@ export default function NoticeGeneration() {
                             }}>
                                 {preview.text}
                             </div>
-                            <button className="btn btn-green btn-lg" style={{ width: '100%', marginTop: 16 }} onClick={sendNotice}>
-                                <FiSend size={16} /> Send Notice
+                            <button className="btn btn-green btn-lg" style={{ width: '100%', marginTop: 16 }}
+                                onClick={sendNotice} disabled={sending}>
+                                <FiSend size={16} /> {sending ? 'Sending...' : 'Send Notice'}
                             </button>
                             {sent && (
                                 <div className="alert alert-success" style={{ marginTop: 12 }}>

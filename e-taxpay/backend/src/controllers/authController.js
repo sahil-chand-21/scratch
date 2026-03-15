@@ -2,21 +2,7 @@ import { supabase } from '../config/supabase.js';
 
 export const loginUser = async (req, res) => {
     try {
-        const { gstId, password, isDemo } = req.body;
-
-        // Demo mode — still works for quick testing
-        if (isDemo && gstId && password === 'demo123') {
-            return res.status(200).json({
-                success: true,
-                user: {
-                    id: 'demo-user-id',
-                    gstId: gstId,
-                    username: 'Demo User',
-                    role: 'user',
-                    token: 'demo-fake-jwt-token'
-                }
-            });
-        }
+        const { gstId, password } = req.body;
 
         // Real Login: derive internal email from GST ID
         // Format: gst.GSTID@taxportal.gov.in (Supabase-safe format)
@@ -61,22 +47,54 @@ export const loginUser = async (req, res) => {
 
 export const loginAdmin = async (req, res) => {
     try {
-        const { username, password, passkey, isDemo } = req.body;
+        const { email, password, passkey } = req.body;
 
-        if (isDemo && password === 'admin123' && passkey === 'ADMIN2026') {
-            return res.status(200).json({
-                success: true,
-                user: {
-                    id: 'demo-admin-id',
-                    username,
-                    role: 'super_admin',
-                    token: 'demo-fake-admin-jwt-token'
-                }
-            });
+        if (!email || !password || !passkey) {
+            return res.status(400).json({ success: false, error: 'Email, password, and passkey are required.' });
         }
 
-        // Add actual Supabase Admin Server-side logic here later
-        return res.status(400).json({ success: false, error: 'Not implemented for production.' });
+        // Authenticate via Supabase Auth
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        if (error || !data.user) {
+            return res.status(401).json({ success: false, error: 'Invalid email or password.' });
+        }
+
+        // Verify the user exists in the admins table and is active
+        const { data: admin, error: adminError } = await supabase
+            .from('admins')
+            .select('*, roles(name)')
+            .eq('auth_id', data.user.id)
+            .eq('is_active', true)
+            .single();
+
+        if (adminError || !admin) {
+            return res.status(403).json({ success: false, error: 'You are not authorized as an admin.' });
+        }
+
+        // Verify the passkey
+        if (admin.passkey_hash !== passkey) {
+            return res.status(401).json({ success: false, error: 'Invalid admin passkey.' });
+        }
+
+        // Determine the role name from the joined roles table
+        const roleName = admin.roles?.name || 'district_admin';
+
+        res.status(200).json({
+            success: true,
+            user: {
+                id: data.user.id,
+                adminId: admin.id,
+                username: admin.username,
+                email: admin.email,
+                role: roleName,
+                district: admin.district,
+                token: data.session.access_token
+            }
+        });
 
     } catch (error) {
         console.error('Admin Login Error:', error);

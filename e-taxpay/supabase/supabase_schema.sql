@@ -255,3 +255,92 @@ CREATE POLICY "Users read own complaints" ON public.complaints
 -- GOVERNMENT UPDATES POLICIES
 CREATE POLICY "Public read updates" ON public.government_updates
   FOR SELECT USING (is_published = TRUE);
+
+-- ============================================
+-- ADMIN RLS POLICIES
+-- ============================================
+-- Enable RLS on admins and audit_logs tables
+ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- Admins can read their own admin profile
+CREATE POLICY "Admins read own data" ON public.admins
+  FOR SELECT USING (auth.uid() = auth_id);
+
+-- Admins can read ALL users
+CREATE POLICY "Admins read all users" ON public.users
+  FOR SELECT USING (
+    auth.uid() IN (SELECT auth_id FROM public.admins WHERE is_active = true)
+  );
+
+-- Admins can read ALL taxes
+CREATE POLICY "Admins read all taxes" ON public.taxes
+  FOR SELECT USING (
+    auth.uid() IN (SELECT auth_id FROM public.admins WHERE is_active = true)
+  );
+
+-- Admins can read ALL payments
+CREATE POLICY "Admins read all payments" ON public.payments
+  FOR SELECT USING (
+    auth.uid() IN (SELECT auth_id FROM public.admins WHERE is_active = true)
+  );
+
+-- Admins can read ALL complaints
+CREATE POLICY "Admins read all complaints" ON public.complaints
+  FOR SELECT USING (
+    auth.uid() IN (SELECT auth_id FROM public.admins WHERE is_active = true)
+  );
+
+-- Admins can update complaints (change status, add notes)
+CREATE POLICY "Admins update complaints" ON public.complaints
+  FOR UPDATE USING (
+    auth.uid() IN (SELECT auth_id FROM public.admins WHERE is_active = true)
+  );
+
+-- Admins can read ALL notices
+CREATE POLICY "Admins read all notices" ON public.notices
+  FOR SELECT USING (
+    auth.uid() IN (SELECT auth_id FROM public.admins WHERE is_active = true)
+  );
+
+-- Admins can create notices
+CREATE POLICY "Admins insert notices" ON public.notices
+  FOR INSERT WITH CHECK (
+    auth.uid() IN (SELECT auth_id FROM public.admins WHERE is_active = true)
+  );
+
+-- Admins can read ALL audit logs
+CREATE POLICY "Admins read all audit_logs" ON public.audit_logs
+  FOR SELECT USING (
+    auth.uid() IN (SELECT auth_id FROM public.admins WHERE is_active = true)
+  );
+
+-- Admins can insert audit logs
+CREATE POLICY "Admins insert audit_logs" ON public.audit_logs
+  FOR INSERT WITH CHECK (
+    auth.uid() IN (SELECT auth_id FROM public.admins WHERE is_active = true)
+  );
+
+-- Admins can manage government updates (CRUD)
+CREATE POLICY "Admins manage updates" ON public.government_updates
+  FOR ALL USING (
+    auth.uid() IN (SELECT auth_id FROM public.admins WHERE is_active = true)
+  );
+
+-- ============================================
+-- SEED: DEFAULT ADMIN ACCOUNTS
+-- ============================================
+-- IMPORTANT: Before running these INSERTs, you must first create
+-- the corresponding auth.users via the Supabase Dashboard:
+--   1. Go to Authentication > Users > Add User
+--   2. Create: superadmin@etaxpay.gov.in with password SuperAdmin@2026
+--   3. Create: districtadmin@etaxpay.gov.in with password DistAdmin@2026
+--   4. Copy each user's UUID and replace the auth_id placeholders below.
+
+-- Super Admin (role_id 3 = super_admin)
+-- INSERT INTO public.admins (auth_id, username, email, role_id, district, passkey_hash)
+-- VALUES ('<super-admin-auth-uuid>', 'Super Admin', 'superadmin@etaxpay.gov.in', 3, 'Almora', 'SUPER2026');
+
+-- District Admin (role_id 2 = district_admin)
+-- INSERT INTO public.admins (auth_id, username, email, role_id, district, passkey_hash)
+-- VALUES ('<district-admin-auth-uuid>', 'District Admin', 'districtadmin@etaxpay.gov.in', 2, 'Almora', 'DIST2026');

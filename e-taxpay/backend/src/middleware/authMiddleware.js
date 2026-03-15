@@ -29,15 +29,21 @@ export const requireAdmin = async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
     }
-    
-    // Check if the user's role is admin from their user metadata
-    // This assumes you set up role metadata in Supabase (e.g. { "role": "admin" })
-    const userRole = req.user.user_metadata?.role;
-    
-    if (userRole !== 'admin') {
+
+    // Verify the user exists in the admins table and is active
+    const { data: admin, error } = await supabase
+      .from('admins')
+      .select('*, roles(name)')
+      .eq('auth_id', req.user.id)
+      .eq('is_active', true)
+      .single();
+
+    if (error || !admin) {
       return res.status(403).json({ error: 'Forbidden: Admin access required.' });
     }
 
+    // Attach admin profile to request for use in controllers
+    req.admin = admin;
     next();
   } catch (error) {
     console.error('Admin Middleware Error:', error);

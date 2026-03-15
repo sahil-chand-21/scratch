@@ -1,39 +1,71 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FiPlusCircle, FiTrash2, FiCheckCircle } from 'react-icons/fi'
-
-const initialUpdates = [
-    { id: 1, title: 'New Tax Rates for FY 2026-27', content: 'The Uttarakhand State Government has announced revised shop tax rates effective from April 2026.', date: '2026-02-20', category: 'Tax Update' },
-    { id: 2, title: 'Digital Payment Incentive Scheme', content: 'Shops making all tax payments digitally through E-TaxPay will receive a 5% discount.', date: '2026-02-15', category: 'Scheme' },
-    { id: 3, title: 'Extension of Tax Payment Deadline', content: 'Tax payment deadline for January 2026 has been extended by 15 days for hill districts.', date: '2026-02-05', category: 'Notice' },
-]
+import api from '../../lib/api'
 
 export default function GovUpdatesAdmin() {
     const { t } = useTranslation()
-    const [updates, setUpdates] = useState(initialUpdates)
+    const [updates, setUpdates] = useState([])
+    const [loading, setLoading] = useState(true)
     const [showForm, setShowForm] = useState(false)
-    const [form, setForm] = useState({ title: '', content: '', category: 'Notice' })
+    const [form, setForm] = useState({ title: '', content: '', category: 'notice' })
     const [published, setPublished] = useState(false)
 
-    const handlePublish = (e) => {
-        e.preventDefault()
-        const newUpdate = {
-            id: Date.now(),
-            title: form.title,
-            content: form.content,
-            category: form.category,
-            date: new Date().toISOString().split('T')[0]
+    useEffect(() => {
+        const fetchUpdates = async () => {
+            try {
+                const response = await api.get('/admin/gov-updates')
+                if (response.data.success) {
+                    setUpdates(response.data.updates)
+                }
+            } catch (error) {
+                console.error('Failed to fetch government updates')
+            } finally {
+                setLoading(false)
+            }
         }
-        setUpdates([newUpdate, ...updates])
-        setForm({ title: '', content: '', category: 'Notice' })
-        setShowForm(false)
-        setPublished(true)
-        setTimeout(() => setPublished(false), 3000)
+        fetchUpdates()
+    }, [])
+
+    const handlePublish = async (e) => {
+        e.preventDefault()
+        try {
+            const response = await api.post('/admin/gov-updates', {
+                title: form.title,
+                content: form.content,
+                category: form.category
+            })
+            if (response.data.success) {
+                const newUpdate = {
+                    id: response.data.update.id,
+                    title: form.title,
+                    content: form.content,
+                    category: form.category,
+                    date: new Date().toISOString().split('T')[0]
+                }
+                setUpdates([newUpdate, ...updates])
+                setForm({ title: '', content: '', category: 'notice' })
+                setShowForm(false)
+                setPublished(true)
+                setTimeout(() => setPublished(false), 3000)
+            }
+        } catch (error) {
+            console.error('Failed to publish update')
+        }
     }
 
-    const deleteUpdate = (id) => {
-        setUpdates(updates.filter(u => u.id !== id))
+    const deleteUpdate = async (id) => {
+        try {
+            const response = await api.delete(`/admin/gov-updates/${id}`)
+            if (response.data.success) {
+                setUpdates(updates.filter(u => u.id !== id))
+            }
+        } catch (error) {
+            console.error('Failed to delete update')
+        }
     }
+
+    if (loading) return <div style={{ padding: '2rem' }}>Loading government updates...</div>
 
     return (
         <div>
@@ -67,10 +99,10 @@ export default function GovUpdatesAdmin() {
                             <label>Category</label>
                             <select className="form-control" value={form.category}
                                 onChange={e => setForm({ ...form, category: e.target.value })}>
-                                <option value="Tax Update">Tax Update</option>
-                                <option value="Scheme">Scheme</option>
-                                <option value="Notice">Notice</option>
-                                <option value="Announcement">Announcement</option>
+                                <option value="tax_update">Tax Update</option>
+                                <option value="scheme">Scheme</option>
+                                <option value="notice">Notice</option>
+                                <option value="announcement">Announcement</option>
                             </select>
                         </div>
                         <div className="form-group">
@@ -88,7 +120,7 @@ export default function GovUpdatesAdmin() {
             )}
 
             <div style={{ display: 'grid', gap: 12 }}>
-                {updates.map(update => (
+                {updates.length > 0 ? updates.map(update => (
                     <div key={update.id} className="update-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -105,7 +137,11 @@ export default function GovUpdatesAdmin() {
                             <FiTrash2 size={14} color="var(--color-maroon)" />
                         </button>
                     </div>
-                ))}
+                )) : (
+                    <div className="card">
+                        <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No government updates found</p>
+                    </div>
+                )}
             </div>
         </div>
     )
