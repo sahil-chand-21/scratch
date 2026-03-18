@@ -1,55 +1,48 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FiDownload } from 'react-icons/fi'
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     LineChart, Line, Legend
 } from 'recharts'
-
-const yearlyData = [
-    { year: '2023', amount: 650000 },
-    { year: '2024', amount: 820000 },
-    { year: '2025', amount: 950000 },
-    { year: '2026', amount: 280000 },
-]
-
-const monthlyBreakdown = [
-    { month: 'Jan', '2025': 85000, '2026': 95000 },
-    { month: 'Feb', '2025': 78000, '2026': 65000 },
-    { month: 'Mar', '2025': 92000, '2026': 0 },
-    { month: 'Apr', '2025': 88000, '2026': 0 },
-    { month: 'May', '2025': 76000, '2026': 0 },
-    { month: 'Jun', '2025': 82000, '2026': 0 },
-    { month: 'Jul', '2025': 79000, '2026': 0 },
-    { month: 'Aug', '2025': 84000, '2026': 0 },
-    { month: 'Sep', '2025': 90000, '2026': 0 },
-    { month: 'Oct', '2025': 95000, '2026': 0 },
-    { month: 'Nov', '2025': 87000, '2026': 0 },
-    { month: 'Dec', '2025': 92000, '2026': 0 },
-]
-
-const blockAnalytics = [
-    { block: 'Almora', total: 245000, paid: 198000, pending: 47000 },
-    { block: 'Hawalbagh', total: 180000, paid: 155000, pending: 25000 },
-    { block: 'Salt', total: 150000, paid: 112000, pending: 38000 },
-    { block: 'Dwarahat', total: 120000, paid: 102000, pending: 18000 },
-    { block: 'Bhaisiyachana', total: 95000, paid: 72000, pending: 23000 },
-    { block: 'Lamgara', total: 88000, paid: 75000, pending: 13000 },
-]
-
-const shopTypeAnalytics = [
-    { type: 'General Store', shops: 435, collected: 217500, pending: 53000 },
-    { type: 'Medical Store', shops: 248, collected: 124000, pending: 28000 },
-    { type: 'Clothing', shops: 186, collected: 93000, pending: 21000 },
-    { type: 'Electronics', shops: 149, collected: 74500, pending: 18000 },
-    { type: 'Restaurant', shops: 124, collected: 62000, pending: 15000 },
-    { type: 'Hardware', shops: 62, collected: 31000, pending: 8000 },
-    { type: 'Stationery', shops: 43, collected: 21500, pending: 5000 },
-]
+import api from '../../lib/api'
 
 export default function TaxAnalytics() {
     const { t } = useTranslation()
     const [activeTab, setActiveTab] = useState('yearly')
+    const [loading, setLoading] = useState(true)
+    const [yearlyData, setYearlyData] = useState([])
+    const [monthlyBreakdown, setMonthlyBreakdown] = useState([])
+    const [blockAnalytics, setBlockAnalytics] = useState([])
+    const [shopTypeAnalytics, setShopTypeAnalytics] = useState([])
+
+    useEffect(() => {
+        const fetchAnalytics = async () => {
+            try {
+                const response = await api.get('/admin/metrics')
+                if (response.data.success) {
+                    const m = response.data.metrics
+                    setYearlyData(m.yearlyData || [])
+                    setMonthlyBreakdown(m.monthlyBreakdown || [])
+                    setBlockAnalytics(m.blockAnalytics || [])
+                    setShopTypeAnalytics(m.shopTypeAnalytics || [])
+                }
+            } catch (error) {
+                console.error('Failed to fetch analytics data')
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchAnalytics()
+    }, [])
+
+    if (loading) return <div style={{ padding: '2rem' }}>Loading analytics...</div>
+
+    // Determine year keys from monthly breakdown for the line chart legend
+    const yearKeys = monthlyBreakdown.length > 0
+        ? Object.keys(monthlyBreakdown[0]).filter(k => k !== 'month')
+        : []
+    const yearColors = ['#821D30', '#E8863A', '#4285F4', '#5B9A59']
 
     return (
         <div>
@@ -95,7 +88,7 @@ export default function TaxAnalytics() {
                             <table className="data-table">
                                 <thead><tr><th>Year</th><th>Collection</th><th>Growth</th></tr></thead>
                                 <tbody>
-                                    {yearlyData.map((d, i) => (
+                                    {yearlyData.length > 0 ? yearlyData.map((d, i) => (
                                         <tr key={d.year}>
                                             <td><strong>{d.year}</strong></td>
                                             <td>₹{d.amount.toLocaleString()}</td>
@@ -107,7 +100,9 @@ export default function TaxAnalytics() {
                                                 ) : '-'}
                                             </td>
                                         </tr>
-                                    ))}
+                                    )) : (
+                                        <tr><td colSpan={3} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No data</td></tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -118,7 +113,7 @@ export default function TaxAnalytics() {
             {/* Monthly */}
             {activeTab === 'monthly' && (
                 <div className="chart-card">
-                    <h4>Month-wise Comparison (2025 vs 2026)</h4>
+                    <h4>Month-wise Comparison</h4>
                     <ResponsiveContainer width="100%" height={350}>
                         <LineChart data={monthlyBreakdown}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#E5E0D5" />
@@ -126,8 +121,9 @@ export default function TaxAnalytics() {
                             <YAxis tickFormatter={v => `₹${(v / 1000).toFixed(0)}K`} />
                             <Tooltip formatter={v => [`₹${v.toLocaleString()}`, '']} />
                             <Legend />
-                            <Line type="monotone" dataKey="2025" stroke="#821D30" strokeWidth={2} dot={{ r: 4 }} />
-                            <Line type="monotone" dataKey="2026" stroke="#E8863A" strokeWidth={2} dot={{ r: 4 }} />
+                            {yearKeys.map((yearKey, i) => (
+                                <Line key={yearKey} type="monotone" dataKey={yearKey} stroke={yearColors[i % yearColors.length]} strokeWidth={2} dot={{ r: 4 }} />
+                            ))}
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -154,7 +150,7 @@ export default function TaxAnalytics() {
                         <table className="data-table">
                             <thead><tr><th>Block</th><th>Total</th><th>Paid</th><th>Pending</th><th>Collection %</th></tr></thead>
                             <tbody>
-                                {blockAnalytics.map(b => (
+                                {blockAnalytics.length > 0 ? blockAnalytics.map(b => (
                                     <tr key={b.block}>
                                         <td><strong>{b.block}</strong></td>
                                         <td>₹{b.total.toLocaleString()}</td>
@@ -163,13 +159,15 @@ export default function TaxAnalytics() {
                                         <td>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                 <div style={{ flex: 1, height: 6, background: '#eee', borderRadius: 3 }}>
-                                                    <div style={{ width: `${(b.paid / b.total * 100)}%`, height: '100%', background: 'var(--color-green)', borderRadius: 3 }}></div>
+                                                    <div style={{ width: `${b.total > 0 ? (b.paid / b.total * 100) : 0}%`, height: '100%', background: 'var(--color-green)', borderRadius: 3 }}></div>
                                                 </div>
-                                                <span style={{ fontSize: '0.82rem' }}>{(b.paid / b.total * 100).toFixed(0)}%</span>
+                                                <span style={{ fontSize: '0.82rem' }}>{b.total > 0 ? (b.paid / b.total * 100).toFixed(0) : 0}%</span>
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                )) : (
+                                    <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No data</td></tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -182,15 +180,17 @@ export default function TaxAnalytics() {
                     <table className="data-table">
                         <thead><tr><th>Shop Type</th><th>Total Shops</th><th>Collected</th><th>Pending</th><th>Avg/Shop</th></tr></thead>
                         <tbody>
-                            {shopTypeAnalytics.map(s => (
+                            {shopTypeAnalytics.length > 0 ? shopTypeAnalytics.map(s => (
                                 <tr key={s.type}>
                                     <td><strong>{s.type}</strong></td>
                                     <td>{s.shops}</td>
                                     <td style={{ color: 'var(--color-green)' }}>₹{s.collected.toLocaleString()}</td>
                                     <td style={{ color: 'var(--color-maroon)' }}>₹{s.pending.toLocaleString()}</td>
-                                    <td>₹{Math.round(s.collected / s.shops).toLocaleString()}</td>
+                                    <td>₹{s.shops > 0 ? Math.round(s.collected / s.shops).toLocaleString() : 0}</td>
                                 </tr>
-                            ))}
+                            )) : (
+                                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No data</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

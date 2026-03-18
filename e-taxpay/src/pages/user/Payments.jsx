@@ -1,13 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
 import { FiCreditCard, FiCheckCircle, FiDownload } from 'react-icons/fi'
 import jsPDF from 'jspdf'
-
-const pendingPayments = [
-    { id: 'PAY-2026-01', month: 'January', year: 2026, amount: 500, penalty: 50, total: 550 },
-    { id: 'PAY-2026-02', month: 'February', year: 2026, amount: 500, penalty: 0, total: 500 },
-]
+import api from '../../lib/api'
 
 export default function Payments() {
     const { t } = useTranslation()
@@ -15,25 +11,70 @@ export default function Payments() {
     const [processing, setProcessing] = useState(false)
     const [paymentDone, setPaymentDone] = useState(null)
 
+    const [pendingPayments, setPendingPayments] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [fetchError, setFetchError] = useState(null)
+
+    const fetchPendingPayments = async () => {
+        try {
+            setLoading(true);
+            const response = await api.get('/taxes');
+            if (response.data.success) {
+                const unpaid = response.data.taxes
+                    .filter(t => t.status !== 'paid')
+                    .map(t => ({
+                        id: t.id,
+                        month: t.month,
+                        year: t.year,
+                        amount: parseFloat(t.amount || 0),
+                        penalty: parseFloat(t.penalty || 0),
+                        total: parseFloat(t.amount || 0) + parseFloat(t.penalty || 0)
+                    }));
+                setPendingPayments(unpaid);
+            }
+        } catch (error) {
+            console.error("Error fetching taxes", error);
+            setFetchError("Could not load your payment details.");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        fetchPendingPayments()
+    }, [])
+
     const totalPending = pendingPayments.reduce((s, p) => s + p.total, 0)
 
-    const handlePayment = (payment) => {
+    const handlePayment = async (payment) => {
         setProcessing(true)
-        // Simulate Razorpay payment
-        setTimeout(() => {
-            const receipt = {
-                receiptNo: 'RCP-' + Date.now(),
-                transactionId: 'TXN-' + Math.random().toString(36).substr(2, 12).toUpperCase(),
-                amount: payment.total,
-                month: payment.month,
-                year: payment.year,
-                paidAt: new Date().toLocaleString('en-IN'),
-                gstId: user?.gstId || '05AAAPZ2694Q1ZN',
-                userName: user?.username || 'Rajesh Kumar'
+        
+        try {
+            // Actual API call to process the payment
+            const response = await api.post(`/taxes/${payment.id}/pay`);
+            
+            if (response.data.success) {
+                const receipt = {
+                    receiptNo: 'RCP-' + Date.now().toString().slice(-6),
+                    transactionId: 'TXN-' + Math.random().toString(36).substr(2, 12).toUpperCase(),
+                    amount: payment.total,
+                    month: payment.month,
+                    year: payment.year,
+                    paidAt: new Date().toLocaleString('en-IN'),
+                    gstId: user?.gstId || user?.gst_id || '05AAAPZ2694Q1ZN',
+                    userName: user?.username || user?.name || 'Taxpayer'
+                }
+                setPaymentDone(receipt)
+                
+                // Refresh the pending list in the background
+                fetchPendingPayments()
             }
-            setPaymentDone(receipt)
+        } catch(error) {
+            console.error('Payment processing failed', error);
+            alert('Payment failed. Please try again.');
+        } finally {
             setProcessing(false)
-        }, 2000)
+        }
     }
 
     const downloadReceipt = () => {
@@ -168,9 +209,15 @@ export default function Payments() {
                         </tr>
                     </thead>
                     <tbody>
-                        {pendingPayments.map(p => (
+                        {loading ? (
+                            <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>Loading pending dues...</td></tr>
+                        ) : fetchError ? (
+                            <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-maroon)' }}>{fetchError}</td></tr>
+                        ) : pendingPayments.length === 0 ? (
+                            <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>You have no pending tax payments! 🎉</td></tr>
+                        ) : pendingPayments.map(p => (
                             <tr key={p.id}>
-                                <td><strong>{p.id}</strong></td>
+                                <td><strong>...{p.id.substring(p.id.length - 6)}</strong></td>
                                 <td>{p.month}</td>
                                 <td>{p.year}</td>
                                 <td>₹{p.amount}</td>

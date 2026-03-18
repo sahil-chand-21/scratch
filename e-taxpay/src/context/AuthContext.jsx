@@ -31,8 +31,8 @@ export function AuthProvider({ children }) {
         try {
             const endpoint = type === 'user' ? '/auth/login/user' : '/auth/login/admin';
             
-            // Add isDemo flag for testing against the backend's dummy login
-            const authPayload = { ...credentials, isDemo: true };
+            // Send credentials directly to backend (no demo bypass)
+            const authPayload = { ...credentials };
 
             const response = await api.post(endpoint, authPayload);
 
@@ -61,8 +61,11 @@ export function AuthProvider({ children }) {
     }
 
     const register = async (userData) => {
-        await new Promise(r => setTimeout(r, 1000))
-        return { success: true, message: 'Registration successful!' }
+        const response = await api.post('/auth/register', userData);
+        if (!response.data.success) {
+            throw new Error(response.data.error || 'Registration failed');
+        }
+        return response.data;
     }
 
     const logout = () => {

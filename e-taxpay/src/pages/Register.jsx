@@ -68,7 +68,7 @@ export default function Register() {
             setSuccess(true)
             setTimeout(() => navigate('/login'), 2000)
         } catch (err) {
-            setError('Registration failed. Try again.')
+            setError(err.message || 'Registration failed. Please try again.')
         } finally {
             setLoading(false)
         }

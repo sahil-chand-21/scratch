@@ -1,47 +1,46 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FiDownload, FiCheckCircle, FiXCircle, FiAlertTriangle } from 'react-icons/fi'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import Papa from 'papaparse'
-
-// Generate mock tax data
-function generateTaxData() {
-    const data = []
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-    const baseAmount = 500
-
-    for (let year = 2025; year <= 2026; year++) {
-        const maxMonth = year === 2026 ? 2 : 12
-        for (let m = 1; m <= maxMonth; m++) {
-            const isPaid = Math.random() > 0.3
-            const dueDate = new Date(year, m - 1, 15)
-            const isOverdue = !isPaid && new Date() > dueDate
-            const penalty = isOverdue ? Math.floor(baseAmount * 0.1) : 0
-            const paidDate = isPaid ? new Date(year, m - 1, Math.floor(Math.random() * 10) + 5) : null
-
-            data.push({
-                id: `TAX-${year}-${String(m).padStart(2, '0')}`,
-                year,
-                month: months[m - 1],
-                monthNum: m,
-                amount: baseAmount,
-                penalty,
-                total: baseAmount + penalty,
-                status: isPaid ? 'paid' : isOverdue ? 'overdue' : 'unpaid',
-                paidDate: paidDate ? paidDate.toLocaleDateString('en-IN') : '-',
-                paidTime: paidDate ? paidDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-',
-                dueDate: dueDate.toLocaleDateString('en-IN')
-            })
-        }
-    }
-    return data.reverse()
-}
+import api from '../../lib/api'
 
 export default function TaxTable() {
     const { t } = useTranslation()
     const [yearFilter, setYearFilter] = useState('')
-    const taxData = useMemo(() => generateTaxData(), [])
+    const [taxData, setTaxData] = useState([])
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const fetchUserTaxes = async () => {
+            try {
+                const response = await api.get('/taxes');
+                if (response.data.success) {
+                    // Map backend data to match expected frontend structure if needed
+                    const mappedTaxes = response.data.taxes.map(t => ({
+                        id: t.id,
+                        year: t.year,
+                        month: t.month,
+                        amount: parseFloat(t.amount || 0),
+                        penalty: parseFloat(t.penalty || 0),
+                        total: parseFloat(t.amount || 0) + parseFloat(t.penalty || 0),
+                        status: t.status,
+                        paidDate: t.paid_date ? new Date(t.paid_date).toLocaleDateString('en-IN') : '-',
+                        paidTime: t.paid_date ? new Date(t.paid_date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-',
+                        dueDate: t.due_date ? new Date(t.due_date).toLocaleDateString('en-IN') : '-'
+                    }));
+                    setTaxData(mappedTaxes);
+                }
+            } catch (error) {
+                console.error("Failed to fetch tax history", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUserTaxes();
+    }, []);
 
     const filtered = yearFilter ? taxData.filter(r => r.year === parseInt(yearFilter)) : taxData
 
@@ -153,7 +152,11 @@ export default function TaxTable() {
                         </tr>
                     </thead>
                     <tbody>
-                        {filtered.map(r => (
+                        {loading ? (
+                             <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>Loading tax history...</td></tr>
+                        ) : filtered.length === 0 ? (
+                             <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>No tax records found.</td></tr>
+                        ) : filtered.map(r => (
                             <tr key={r.id}>
                                 <td>{r.year}</td>
                                 <td>{r.month}</td>
@@ -162,7 +165,7 @@ export default function TaxTable() {
                                 <td><strong>₹{r.total}</strong></td>
                                 <td>
                                     <span className={`badge badge-${r.status === 'paid' ? 'paid' : r.status === 'overdue' ? 'danger' : 'warning'}`}>
-                                        {statusIcon(r.status)} {t(`user.${r.status}`)}
+                                        {statusIcon(r.status)} {t(`user.${r.status}`) || r.status.toUpperCase()}
                                     </span>
                                 </td>
                                 <td>{r.paidDate}</td>

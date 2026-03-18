@@ -7,54 +7,23 @@ import {
 } from 'recharts'
 import api from '../../lib/api'
 
-const blockData = [
-    { name: 'Almora', paid: 45000, unpaid: 12000 },
-    { name: 'Hawalbagh', paid: 32000, unpaid: 8000 },
-    { name: 'Salt', paid: 28000, unpaid: 15000 },
-    { name: 'Dwarahat', paid: 22000, unpaid: 6000 },
-    { name: 'Bhaisiyachana', paid: 18000, unpaid: 9000 },
-    { name: 'Lamgara', paid: 15000, unpaid: 5000 },
-]
-
-const shopTypeData = [
-    { name: 'General Store', value: 35, color: '#E8863A' },
-    { name: 'Medical', value: 20, color: '#5B9A59' },
-    { name: 'Clothing', value: 15, color: '#821D30' },
-    { name: 'Electronics', value: 12, color: '#4285F4' },
-    { name: 'Restaurant', value: 10, color: '#D4712A' },
-    { name: 'Other', value: 8, color: '#8A8A8A' },
-]
-
-const monthlyData = [
-    { month: 'Sep', amount: 120000 },
-    { month: 'Oct', amount: 135000 },
-    { month: 'Nov', amount: 128000 },
-    { month: 'Dec', amount: 142000 },
-    { month: 'Jan', amount: 155000 },
-    { month: 'Feb', amount: 98000 },
-]
-
-const recentPayments = [
-    { user: 'Rajesh Kumar', gst: '05AAAPZ2694Q1ZN', amount: 550, date: '27 Feb 2026', status: 'paid' },
-    { user: 'Priya Devi', gst: '05BBBPZ3584Q2YM', amount: 500, date: '26 Feb 2026', status: 'paid' },
-    { user: 'Mohan Lal', gst: '05CCCPZ4474Q3XN', amount: 500, date: '26 Feb 2026', status: 'paid' },
-    { user: 'Kamla Bisht', gst: '05DDDPZ5364Q4WO', amount: 600, date: '25 Feb 2026', status: 'paid' },
-    { user: 'Suresh Rawat', gst: '05EEEPZ6254Q5VP', amount: 500, date: '25 Feb 2026', status: 'paid' },
-]
-
 export default function Dashboard() {
     const { t } = useTranslation()
     const [loading, setLoading] = useState(true)
     const [metrics, setMetrics] = useState({
         totalUsers: 0,
         totalTaxesCollected: 0,
-        activeSessions: 0
+        paidShops: 0,
+        unpaidShops: 0,
+        shopTypeData: [],
+        recentPayments: [],
+        blockData: [],
+        collectionTrends: []
     })
 
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                // Fetch high-level metrics from the API
                 const response = await api.get('/admin/metrics');
                 if (response.data.success) {
                     setMetrics(response.data.metrics);
@@ -94,7 +63,7 @@ export default function Dashboard() {
                         <FiCheckCircle size={22} />
                     </div>
                     <div className="stat-info">
-                        <h3>892</h3>
+                        <h3>{metrics.paidShops}</h3>
                         <p>{t('admin.paidShops')}</p>
                     </div>
                 </div>
@@ -103,7 +72,7 @@ export default function Dashboard() {
                         <FiXCircle size={22} />
                     </div>
                     <div className="stat-info">
-                        <h3>355</h3>
+                        <h3>{metrics.unpaidShops}</h3>
                         <p>{t('admin.unpaidShops')}</p>
                     </div>
                 </div>
@@ -123,7 +92,7 @@ export default function Dashboard() {
                 <div className="chart-card">
                     <h4>{t('admin.blockWise')}</h4>
                     <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={blockData}>
+                        <BarChart data={metrics.blockData || []}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#E5E0D5" />
                             <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                             <YAxis tick={{ fontSize: 11 }} />
@@ -143,7 +112,7 @@ export default function Dashboard() {
                     <ResponsiveContainer width="100%" height={280}>
                         <PieChart>
                             <Pie
-                                data={shopTypeData}
+                                data={metrics.shopTypeData || []}
                                 cx="50%"
                                 cy="50%"
                                 innerRadius={60}
@@ -152,7 +121,7 @@ export default function Dashboard() {
                                 dataKey="value"
                                 label={({ name, value }) => `${name} (${value}%)`}
                             >
-                                {shopTypeData.map((entry, i) => (
+                                {(metrics.shopTypeData || []).map((entry, i) => (
                                     <Cell key={i} fill={entry.color} />
                                 ))}
                             </Pie>
@@ -166,12 +135,12 @@ export default function Dashboard() {
                 <div className="chart-card">
                     <h4>{t('admin.monthlyGrowth')}</h4>
                     <ResponsiveContainer width="100%" height={260}>
-                        <LineChart data={monthlyData}>
+                        <LineChart data={metrics.collectionTrends || []}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#E5E0D5" />
-                            <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                             <YAxis tick={{ fontSize: 11 }} />
                             <Tooltip formatter={(value) => [`₹${value.toLocaleString()}`, 'Collection']} />
-                            <Line type="monotone" dataKey="amount" stroke="#821D30" strokeWidth={3} dot={{ fill: '#821D30', r: 5 }} />
+                            <Line type="monotone" dataKey="collection" stroke="#821D30" strokeWidth={3} dot={{ fill: '#821D30', r: 5 }} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -189,18 +158,22 @@ export default function Dashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {recentPayments.map((p, i) => (
-                                    <tr key={i}>
-                                        <td>
-                                            <div>
-                                                <strong style={{ fontSize: '0.85rem' }}>{p.user}</strong>
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.gst}</div>
-                                            </div>
-                                        </td>
-                                        <td><strong style={{ color: 'var(--color-green)' }}>₹{p.amount}</strong></td>
-                                        <td style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{p.date}</td>
-                                    </tr>
-                                ))}
+                                {(metrics.recentPayments || []).length > 0 ? (
+                                    (metrics.recentPayments || []).map((p, i) => (
+                                        <tr key={i}>
+                                            <td>
+                                                <div>
+                                                    <strong style={{ fontSize: '0.85rem' }}>{p.user}</strong>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.gst}</div>
+                                                </div>
+                                            </td>
+                                            <td><strong style={{ color: 'var(--color-green)' }}>₹{p.amount}</strong></td>
+                                            <td style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{p.date}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan={3} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No recent payments</td></tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
